@@ -91,3 +91,5 @@ docs-local
 .claude 
 docs
 .pypirc
+HOW_IT_WORKS.md
+docs-local
