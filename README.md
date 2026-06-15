@@ -225,27 +225,25 @@ print(df)
 client.export.export_comparison_to_csv(scenarios, 'scenario_results.csv')
 ```
 
-## AI Agent Automation (NEW!)
+## AI Agent Automation
 
-Automate LCA workflows with AI agents using the included **MCP (Model Context Protocol) server**:
+Automate LCA workflows with AI agents using **[openlca-mcp](https://github.com/dernestbank/openlca-mcp)** — a standalone MCP server built on this library:
 
-```python
-# For AI agents in n8n, Claude Desktop, or other MCP-compatible tools
-# The MCP server exposes 15+ LCA tools organized by ISO phases:
-
+```
 Phase 1 (Goal & Scope): search_flows, search_impact_methods, find_providers
-Phase 2 (LCI): create_product_flow, create_process, create_product_system
-Phase 3 (LCIA): calculate_impacts, get_inventory_results
+Phase 2 (LCI):          create_product_flow, create_process, create_product_system
+Phase 3 (LCIA):         calculate_impacts, get_inventory_results
 Phase 4 (Interpretation): analyze_contributions, export_results
-
-# See mcp-server/ directory for complete setup
 ```
 
-**Quick Start with n8n:**
-1. Install MCP server: `cd mcp-server && pip install -r requirements.txt`
-2. Configure in n8n: See [mcp-server/docs/n8n-integration.md](mcp-server/docs/n8n-integration.md)
-3. Import workflow: `mcp-server/examples/n8n-workflows/basic_lca_workflow.json`
-4. Automate LCA! 🤖
+**Quick Start:**
+```bash
+git clone https://github.com/dernestbank/openlca-mcp.git
+cd openlca-mcp && pip install -r requirements.txt
+python -m src.server
+```
+
+See the [openlca-mcp repo](https://github.com/dernestbank/openlca-mcp) for Docker, n8n, and client configs (Claude Desktop, Cursor, VS Code, etc.).
 
 ## Module Overview
 
@@ -322,7 +320,7 @@ client = OLCAClient(port=8080)
 - **[Examples](examples/)** - Working example scripts and Jupyter notebooks
 - **[API Reference](documentation/api/README.md)** - Module structure and API details
 - **[Complete Documentation](documentation/index.md)** - Full documentation hub
-- **[MCP Server](mcp-server/README.md)** - For AI agent automation 
+- **[MCP Server](https://github.com/dernestbank/openlca-mcp)** - For AI agent automation (standalone repo)
 
 ## Requirements
 

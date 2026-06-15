@@ -301,7 +301,7 @@ client = OLCAClient(port=8080)
 - **[Examples](https://github.com/dernestbank/openlca-ipc/tree/main/examples)** - Working example scripts and Jupyter notebooks
 - **[Complete Documentation](https://github.com/dernestbank/openlca-ipc/blob/main/documentation/index.md)** - Full documentation hub
 - **[Quick start guide](https://github.com/dernestbank/openlca-ipc/blob/main/documentation/quickstart.md)** - Module structure and API details
-- **[MCP Server](https://github.com/dernestbank/openlca-ipc/blob/main/mcp-server/README.md)** - For AI agent automation 
+- **[MCP Server](https://github.com/dernestbank/openlca-mcp)** - For AI agent automation (standalone repo)
 
 ## Requirements
 
