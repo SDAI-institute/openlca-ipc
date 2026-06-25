@@ -1,5 +1,11 @@
 """
-Tests for DataBuilder class
+Tests for DataBuilder class.
+
+Signatures under test:
+    create_product_flow(name, description="") -> o.Flow
+    create_exchange(flow, amount, is_input, is_quantitative_reference=False,
+                    provider=None) -> o.Exchange
+    create_process(name, description="", exchanges=None) -> o.Process
 """
 import pytest
 from unittest.mock import MagicMock
@@ -16,90 +22,94 @@ class TestDataBuilder:
         assert builder is not None
         assert builder.client == mock_ipc_client
 
-    def test_create_product_flow(self, mock_ipc_client):
-        """Test create_product_flow creates a flow with correct properties."""
-        mock_ipc_client.put.return_value = o.Ref(id="flow-id", name="Test Product")
-
+    def test_mass_property_cached(self, mock_ipc_client):
+        """Mass property is resolved from the client and cached."""
         builder = DataBuilder(mock_ipc_client)
-        flow_ref = builder.create_product_flow(
-            name="Test Product",
-            flow_property="Mass",
-            unit="kg"
-        )
+        prop = builder.mass_property
+        assert prop.name == "Mass"
+        # Second access should reuse the cache, not call get again.
+        calls_before = mock_ipc_client.get.call_count
+        _ = builder.mass_property
+        assert mock_ipc_client.get.call_count == calls_before
 
-        assert flow_ref is not None
-        assert flow_ref.name == "Test Product"
+    def test_kg_unit(self, mock_ipc_client):
+        """kg unit is resolved from the mass property's unit group."""
+        builder = DataBuilder(mock_ipc_client)
+        assert builder.kg_unit.name == "kg"
+
+    def test_create_product_flow(self, mock_ipc_client):
+        """create_product_flow creates a product flow and persists it."""
+        builder = DataBuilder(mock_ipc_client)
+        flow = builder.create_product_flow(name="Test Product", description="1mm")
+
+        assert isinstance(flow, o.Flow)
+        assert flow.name == "Test Product"
+        assert flow.flow_type == o.FlowType.PRODUCT_FLOW
+        assert flow.id  # a uuid was assigned
+        assert flow.flow_properties and flow.flow_properties[0].is_ref_flow_property
         assert mock_ipc_client.put.called
 
     def test_create_exchange(self, mock_ipc_client, sample_flow):
-        """Test create_exchange creates exchange with correct properties."""
+        """create_exchange builds an exchange with the right amount/direction."""
         builder = DataBuilder(mock_ipc_client)
         exchange = builder.create_exchange(
             flow=sample_flow,
             amount=1.0,
             is_input=True,
-            is_quantitative_reference=False
+            is_quantitative_reference=False,
         )
 
-        assert exchange is not None
         assert isinstance(exchange, o.Exchange)
         assert exchange.amount == 1.0
         assert exchange.is_input is True
-        assert exchange.quantitative_reference is False
+        assert exchange.is_quantitative_reference is False
+        assert exchange.flow.id == sample_flow.id
 
     def test_create_exchange_with_provider(self, mock_ipc_client, sample_flow, sample_process):
-        """Test create_exchange with provider links correctly."""
+        """create_exchange links a default provider when one is supplied."""
         builder = DataBuilder(mock_ipc_client)
         exchange = builder.create_exchange(
             flow=sample_flow,
             amount=2.0,
             is_input=True,
-            provider=sample_process
+            provider=sample_process,
         )
 
-        assert exchange is not None
         assert exchange.amount == 2.0
-        # Provider should be set if provided
-        if hasattr(exchange, 'default_provider'):
-            assert exchange.default_provider is not None
+        assert exchange.default_provider is not None
+        assert exchange.default_provider.id == sample_process.id
+
+    def test_create_exchange_rejects_bad_flow(self, mock_ipc_client):
+        """create_exchange raises TypeError for an unsupported flow type."""
+        builder = DataBuilder(mock_ipc_client)
+        with pytest.raises(TypeError):
+            builder.create_exchange(flow="not-a-flow", amount=1.0, is_input=True)
 
     def test_create_process(self, mock_ipc_client):
-        """Test create_process creates process with exchanges."""
-        mock_ipc_client.put.return_value = o.Ref(id="proc-id", name="Test Process")
-
-        # Create sample exchanges
+        """create_process creates a process with exchanges and persists it."""
         exchanges = [
-            o.Exchange(amount=1.0, is_input=False, quantitative_reference=True),
+            o.Exchange(amount=1.0, is_input=False, is_quantitative_reference=True),
         ]
 
         builder = DataBuilder(mock_ipc_client)
-        process_ref = builder.create_process(
-            name="Test Process",
-            exchanges=exchanges
-        )
+        process = builder.create_process(name="Test Process", exchanges=exchanges)
 
-        assert process_ref is not None
-        assert process_ref.name == "Test Process"
+        assert isinstance(process, o.Process)
+        assert process.name == "Test Process"
+        assert process.process_type == o.ProcessType.UNIT_PROCESS
+        assert process.exchanges[0].internal_id == 1
+        assert process.last_internal_id == 1
         assert mock_ipc_client.put.called
 
-    def test_create_process_validates_quantitative_reference(self, mock_ipc_client):
-        """Test create_process validates quantitative reference exists."""
-        # Exchanges without quantitative reference
+    def test_create_process_warns_on_missing_qref(self, mock_ipc_client, caplog):
+        """A process without exactly one quantitative reference logs a warning."""
         exchanges = [
-            o.Exchange(amount=1.0, is_input=True, quantitative_reference=False),
+            o.Exchange(amount=1.0, is_input=True, is_quantitative_reference=False),
         ]
 
         builder = DataBuilder(mock_ipc_client)
+        with caplog.at_level("WARNING"):
+            process = builder.create_process(name="No Qref", exchanges=exchanges)
 
-        # Should handle missing qref (might warn or add default)
-        # Implementation dependent - just test it doesn't crash
-        try:
-            process_ref = builder.create_process(
-                name="Test Process",
-                exchanges=exchanges
-            )
-            # If successful, that's fine
-            assert True
-        except Exception:
-            # If it raises an error for validation, that's also acceptable
-            assert True
+        assert isinstance(process, o.Process)
+        assert any("qref" in rec.message.lower() for rec in caplog.records)

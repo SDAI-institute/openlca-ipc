@@ -15,7 +15,7 @@ Based on olca-ipc 2.4.0 and olca-schema 2.4.0, this library follows
 ISO-14040/14044 standards for life cycle assessment (LCA) workflows.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Ernest Boakye Danquah"
 
 # Import core functionality

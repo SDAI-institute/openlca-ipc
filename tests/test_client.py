@@ -1,5 +1,8 @@
 """
-Tests for OLCAClient class
+Tests for OLCAClient class.
+
+The client module imports olca_ipc as ``ipc`` (``import olca_ipc as ipc``),
+so the patch target is ``openlca_ipc.client.ipc.Client``.
 """
 import pytest
 from unittest.mock import patch, MagicMock
@@ -11,7 +14,7 @@ class TestOLCAClient:
 
     def test_client_initialization(self):
         """Test client can be initialized with default parameters."""
-        with patch('openlca_ipc.client.olca.Client'):
+        with patch('openlca_ipc.client.ipc.Client'):
             client = OLCAClient(port=8080)
             assert client is not None
             assert hasattr(client, 'search')
@@ -26,10 +29,9 @@ class TestOLCAClient:
 
     def test_client_has_utility_modules(self):
         """Test client has all expected utility modules."""
-        with patch('openlca_ipc.client.olca.Client'):
+        with patch('openlca_ipc.client.ipc.Client'):
             client = OLCAClient(port=8080)
 
-            # Check all utility modules are present
             from openlca_ipc.search import SearchUtils
             from openlca_ipc.data import DataBuilder
             from openlca_ipc.systems import SystemBuilder
@@ -52,25 +54,40 @@ class TestOLCAClient:
 
     def test_context_manager(self):
         """Test client works as context manager."""
-        with patch('openlca_ipc.client.olca.Client'):
+        with patch('openlca_ipc.client.ipc.Client'):
             with OLCAClient(port=8080) as client:
                 assert client is not None
                 assert hasattr(client, 'search')
 
     def test_client_custom_port(self):
-        """Test client accepts custom port."""
-        with patch('openlca_ipc.client.olca.Client') as mock_client_class:
+        """Test client accepts and stores a custom port."""
+        with patch('openlca_ipc.client.ipc.Client'):
             client = OLCAClient(port=9090)
             assert client is not None
+            assert client.port == 9090
 
-    @patch('openlca_ipc.client.olca.Client')
-    def test_test_connection_success(self, mock_client_class):
-        """Test connection test method when successful."""
-        mock_client = MagicMock()
-        mock_client_class.return_value = mock_client
+    def test_connection_failure_raises(self):
+        """Test a failed connection raises ConnectionError."""
+        with patch('openlca_ipc.client.ipc.Client', side_effect=Exception("boom")):
+            with pytest.raises(ConnectionError):
+                OLCAClient(port=8080)
 
-        client = OLCAClient(port=8080)
-        # Mock successful connection
-        result = client.test_connection()
-        # Should return True or not raise exception
-        assert result is not None
+    def test_test_connection_success(self):
+        """Test connection test returns True when the Mass property resolves."""
+        with patch('openlca_ipc.client.ipc.Client') as mock_client_class:
+            mock_client = MagicMock()
+            mock_client.get.return_value = MagicMock()  # non-None Mass property
+            mock_client_class.return_value = mock_client
+
+            client = OLCAClient(port=8080)
+            assert client.test_connection() is True
+
+    def test_test_connection_failure(self):
+        """Test connection test returns False when the Mass property is missing."""
+        with patch('openlca_ipc.client.ipc.Client') as mock_client_class:
+            mock_client = MagicMock()
+            mock_client.get.return_value = None
+            mock_client_class.return_value = mock_client
+
+            client = OLCAClient(port=8080)
+            assert client.test_connection() is False
