@@ -97,7 +97,11 @@ class ParameterManager:
             # Create setup with parameter redefinition
             setup = o.CalculationSetup()
             setup.target = system
-            setup.impact_method = impact_method.to_ref()
+            setup.impact_method = (
+                impact_method.to_ref()
+                if hasattr(impact_method, 'to_ref')
+                else impact_method
+            )
             setup.amount = 1.0
             setup.parameters = [self.create_parameter_redef(parameter_name, value, context)]
             
