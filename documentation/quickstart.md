@@ -6,7 +6,7 @@ Get up and running with the openLCA IPC Python library in 5 minutes.
 
 Before starting, make sure you have:
 
-1. ✓ Python 3.10 or higher installed
+1. ✓ Python 3.11 or higher installed
 2. ✓ openLCA desktop application installed
 3. ✓ The library installed (see [Installation Guide](../documentation/installation.md))
 4. ✓ A database loaded in openLCA
@@ -236,6 +236,81 @@ with OLCAClient(port=8080) as client:
     result.dispose()
 ```
 
+## Step 7: Deeper Analysis (new in v0.4)
+
+Once you have a `result`, v0.4 adds richer result helpers:
+
+```python
+with OLCAClient(port=8080) as client:
+    system = client.systems.create_product_system(
+        client.search.find_processes(['Widget Production'])[0]
+    )
+    method = client.search.find_impact_method(['TRACI'])
+    result = client.calculate.simple_calculation(system, method)
+    try:
+        impacts = client.results.get_total_impacts(result)
+        gwp = next(i for i in impacts if 'warming' in i['name'].lower())
+        cat = gwp['category']
+
+        # Contribution (hotspot) TREE — upstream, recursive
+        tree = client.contributions.get_contribution_tree(
+            result, cat, max_depth=3, min_share=0.01
+        )
+        for node in tree:
+            print(f"{node.name}: {node.share*100:.1f}%")
+            for child in node.children:
+                print(f"   └─ {child.name}: {child.share*100:.1f}%")
+
+        # Full life cycle inventory (elementary flows)
+        inventory = client.results.get_inventory(result, direction='output')
+
+        # Normalized & weighted impacts (if the method defines them)
+        normalized = client.results.get_normalized_impacts(result)
+        weighted = client.results.get_weighted_impacts(result)
+
+        # Sankey data (viz / MCP friendly dict)
+        sankey = client.results.get_sankey(result, cat, max_nodes=50)
+
+        # Reliability self-check
+        from openlca_ipc import check_result_consistency
+        for warning in check_result_consistency(result):
+            print("⚠", warning)
+    finally:
+        result.dispose()
+```
+
+### Structured responses for agents / MCP
+
+```python
+from openlca_ipc import OLCAClient, ResultSummary, CalculationContext, health_check
+
+with OLCAClient(port=8080) as client:
+    print(health_check(client))  # connection + entity counts
+
+    system = client.systems.create_product_system(
+        client.search.find_processes(['Widget Production'])[0]
+    )
+    method = client.search.find_impact_method(['TRACI'])
+    result = client.calculate.simple_calculation(system, method)
+    try:
+        impacts = client.results.get_total_impacts(result)
+        summary = ResultSummary.from_impacts(
+            impacts, database="my_db", impact_method=method, top_n=5
+        )
+        print(summary.to_json())   # compact JSON for an LLM/MCP tool
+
+        # Provenance for reproducible artifacts
+        context = CalculationContext.capture(
+            database="my_db", server_port=8080,
+            product_system=system, impact_method=method,
+        )
+        print(context.to_dict())
+    finally:
+        result.dispose()
+```
+
+See **[Agent & MCP usage](agent-usage.md)** for the full structured-response, reproducibility, and error-handling guide.
+
 ## Common Patterns
 
 ### Pattern 1: Context Manager (Recommended)
@@ -257,10 +332,24 @@ from openlca_ipc import OLCAClient
 
 # Manual connection management
 client = OLCAClient(port=8080)
-try:
-    flow = client.search.find_flow(['steel'])
-finally:
-    client.client.close()  # Manual cleanup
+flow = client.search.find_flow(['steel'])
+# The underlying olca_ipc.Client holds no OS resources to close; the context
+# manager (Pattern 1) is still preferred for symmetry. Always dispose *results*.
+```
+
+### Pattern 2b: Read-only (safe) mode
+
+```python
+from openlca_ipc import OLCAClient
+from openlca_ipc.agent import WriteBlocked
+
+# Safe mode: reads/searches/calculations work, but any write raises.
+with OLCAClient(port=8080, read_only=True) as client:
+    flow = client.search.find_flow(['steel'])      # OK
+    try:
+        client.data.create_product_flow("Widget")  # blocked
+    except WriteBlocked as e:
+        print(e.to_dict())  # structured, recoverable error envelope
 ```
 
 ### Pattern 3: Always Dispose Results
@@ -445,5 +534,5 @@ with OLCAClient(port=8080) as client:
 
 - **Documentation**: [Full docs](../documentation/index.md)
 - **Examples**: [Example scripts](../examples/)
-- **Issues**: [GitHub Issues](https://github.com/dernestbank/openlca-ipc/issues)
+- **Issues**: [GitHub Issues](https://github.com/SDAI-institute/openlca-ipc/issues)
 - **Email**: dernestbanksch@gmail.com

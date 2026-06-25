@@ -59,6 +59,22 @@ class TestOLCAClient:
                 assert client is not None
                 assert hasattr(client, 'search')
 
+    def test_context_manager_no_close_method(self):
+        """__exit__ must not raise even when the ipc.Client has no close()."""
+        with patch('openlca_ipc.client.ipc.Client') as mock_class:
+            # Simulate a client instance that has no close() attribute
+            mock_instance = MagicMock(spec=[
+                'get', 'get_descriptors', 'put', 'calculate',
+                'get_providers', 'create_product_system', 'simulate',
+                'update', 'delete',
+            ])
+            mock_instance.get.return_value = None
+            mock_class.return_value = mock_instance
+
+            # Must not raise AttributeError on exit
+            with OLCAClient(port=8080):
+                pass
+
     def test_client_custom_port(self):
         """Test client accepts and stores a custom port."""
         with patch('openlca_ipc.client.ipc.Client'):
