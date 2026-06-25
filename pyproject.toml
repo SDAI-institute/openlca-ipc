@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openlca-ipc"
-version = "0.2.0"
+version = "0.4.0"
 description = "A Python library for interacting with openLCA desktop application through the IPC protocol for life cycle assessment (LCA) workflows."
 readme = "README-pypi.md"
 requires-python = ">=3.11"
@@ -29,8 +29,8 @@ classifiers = [
 keywords = ["openlca", "lca", "life-cycle-assessment", "ipc", "environmental-impact", "iso-14040", "iso-14044"]
 
 dependencies = [
-    "olca-ipc>=2.4.0",
-    "olca-schema>=2.4.0",
+    "olca-ipc>=2.6.0",
+    "olca-schema>=2.6.0",
     "numpy>=1.24.0",
 ]
 
@@ -39,6 +39,7 @@ full = [
     "matplotlib>=3.7.0",
     "pandas>=2.0.0",
     "scipy>=1.10.0",
+    "openpyxl>=3.1.0",
 ]
 dev = [
     "pytest>=7.0.0",
@@ -46,6 +47,8 @@ dev = [
     "black>=23.0.0",
     "flake8>=6.0.0",
     "mypy>=1.0.0",
+    "scipy>=1.10.0",
+    "openpyxl>=3.1.0",
 ]
 viz = [
     "matplotlib>=3.7.0",
@@ -57,10 +60,10 @@ export = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/dernestbank/openlca-ipc"
-Documentation = "https://github.com/dernestbank/openlca-ipc/tree/main/docs"
-Repository = "https://github.com/dernestbank/openlca-ipc"
-Issues = "https://github.com/dernestbank/openlca-ipc/issues"
+Homepage = "https://github.com/SDAI-institute/openlca-ipc"
+Documentation = "https://github.com/SDAI-institute/openlca-ipc/tree/main/docs"
+Repository = "https://github.com/SDAI-institute/openlca-ipc"
+Issues = "https://github.com/SDAI-institute/openlca-ipc/issues"
 
 # Only ship the library package; keep tests/examples/docs out of the wheel.
 [tool.setuptools.packages.find]
@@ -90,4 +93,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=openlca_ipc --cov-report=term-missing"
+addopts = "-v --cov=openlca_ipc --cov-report=term-missing -m 'not live'"
+markers = [
+    "live: requires a running openLCA IPC server (deselected by default)",
+]

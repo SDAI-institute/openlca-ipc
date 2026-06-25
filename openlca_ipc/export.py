@@ -33,24 +33,47 @@ class ExportManager:
         filepath: str
     ) -> bool:
         """
-        Export calculation result to Excel.
-        
+        Export total impact results to an Excel workbook.
+
+        Requires the ``openpyxl`` package (``pip install openlca-ipc[export]``).
+
         Args:
-            result: Calculation result
-            filepath: Output Excel file path
-        
+            result: Calculation result (olca_ipc Result object).
+            filepath: Output .xlsx file path.
+
         Returns:
-            True if successful
-        
+            True if successful, False otherwise.
+
         Example:
             >>> export.export_to_excel(result, 'lca_results.xlsx')
         """
         try:
-            self.client.excel_export(result, filepath)
-            logger.info(f"Exported results to {filepath}")
+            import openpyxl  # optional dependency
+        except ImportError:
+            logger.error(
+                "Excel export requires openpyxl: pip install 'openlca-ipc[export]'"
+            )
+            return False
+
+        try:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Impact Assessment"
+            ws.append(["Impact Category", "Amount", "Unit"])
+
+            for iv in result.get_total_impacts():
+                cat = iv.impact_category
+                name = cat.name if cat else ''
+                unit = getattr(cat, 'ref_unit', '') or ''
+                amount = iv.amount if iv.amount is not None else 0.0
+                ws.append([name, amount, unit])
+
+            wb.save(filepath)
+            logger.info("Exported results to %s", filepath)
             return True
+
         except Exception as e:
-            logger.error(f"Excel export failed: {e}")
+            logger.error("Excel export failed: %s", e)
             return False
     
     def export_impacts_to_csv(

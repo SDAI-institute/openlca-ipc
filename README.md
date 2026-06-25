@@ -13,12 +13,17 @@ You can cite all versions by using the DOI 10.5281/zenodo.17567634. This DOI rep
 
 - **Simple, Pythonic API** - High-level utilities that abstract complex IPC operations
 - **Comprehensive LCA Workflow** - Search, create, calculate, and analyze in one package
-- **Contribution Analysis** - Identify key contributors to environmental impacts
+- **Contribution Tree** - Recursive upstream contribution trees with depth/share pruning
+- **Full LCI Inventory** - Elementary-flow inventory with input/output direction filter
+- **Normalization & Weighting** - Normalized and weighted impacts in consistent dict format
+- **Sankey Data** - Sankey graph data as plain dicts for visualization or MCP tools
+- **Scenario Comparison** - `compare_systems()` returns per-category difference tables
 - **Uncertainty Analysis** - Monte Carlo simulations with statistical summaries
-- **Scenario Analysis** - Parameter sensitivity and scenario comparison
+- **Parameter Scenarios** - Sensitivity analysis over named parameters
 - **Export Utilities** - CSV and Excel export for results
-- **AI Agent Friendly** - Clear documentation and structured outputs for automation
-- **MCP Server** - Model Context Protocol server for n8n and AI workflow automation
+- **Agent Layer** - Compact JSON summaries, reproducibility metadata, and recoverable structured errors for AI agents and MCP servers
+- **Read-Only Safe Mode** - `OLCAClient(read_only=True)` blocks all writes at the Python layer
+- **Result Consistency Checks** - Runtime invariant warnings when contributions diverge from totals
 - **ISO Compliant** - Follows ISO-14040/14044 LCA standards
 
 ## Installation
@@ -29,7 +34,7 @@ You can cite all versions by using the DOI 10.5281/zenodo.17567634. This DOI rep
 - openLCA desktop application (version 2.x)
 - openLCA IPC server running (Tools → Developer Tools → IPC Server)
 
-### Install from PyPI (Coming Soon)
+### Install from PyPI
 
 ```bash
 pip install openlca-ipc
@@ -39,7 +44,7 @@ pip install openlca-ipc
 
 ```bash
 # Clone the repository
-git clone https://github.com/dernestbank/openlca-ipc.git
+git clone https://github.com/SDAI-institute/openlca-ipc.git
 cd openlca-ipc
 
 # Install in editable mode
@@ -225,40 +230,48 @@ print(df)
 client.export.export_comparison_to_csv(scenarios, 'scenario_results.csv')
 ```
 
-## AI Agent Automation
+## AI Agent & MCP Automation
 
-Automate LCA workflows with AI agents using **[openlca-mcp](https://github.com/dernestbank/openlca-mcp)** — a standalone MCP server built on this library:
+`openlca-ipc` ships a built-in **agent layer** (`openlca_ipc.agent`) for use directly from AI agents or MCP servers — no extra repo needed:
 
-```
-Phase 1 (Goal & Scope): search_flows, search_impact_methods, find_providers
-Phase 2 (LCI):          create_product_flow, create_process, create_product_system
-Phase 3 (LCIA):         calculate_impacts, get_inventory_results
-Phase 4 (Interpretation): analyze_contributions, export_results
-```
+```python
+from openlca_ipc import OLCAClient, ResultSummary, health_check
 
-**Quick Start:**
-```bash
-git clone https://github.com/dernestbank/openlca-mcp.git
-cd openlca-mcp && pip install -r requirements.txt
-python -m src.server
+with OLCAClient(port=8080, read_only=True) as client:
+    print(health_check(client))            # server probe + entity counts
+    result = client.calculate.simple_calculation(system, method)
+    impacts = client.results.get_total_impacts(result)
+    summary = ResultSummary.from_impacts(impacts, product_system=system)
+    print(summary.to_json())               # compact JSON for the agent
+    result.dispose()
 ```
 
-See the [openlca-mcp repo](https://github.com/dernestbank/openlca-mcp) for Docker, n8n, and client configs (Claude Desktop, Cursor, VS Code, etc.).
+| MCP tool | Backed by |
+|---|---|
+| `openlca_health` | `health_check(client)` |
+| `openlca_search` | `client.search.*` → `EntitySummary` |
+| `openlca_calculate` | `simple_calculation` → `ResultSummary` |
+| `openlca_contribution_tree` | `contributions.get_contribution_tree` |
+| `openlca_compare_scenarios` | `calculate.compare_systems` |
+
+See [`documentation/agent-usage.md`](documentation/agent-usage.md) for the full MCP builder guide.
 
 ## Module Overview
 
 The library is organized into specialized modules:
 
-- **`OLCAClient`** - Main client for connecting to openLCA IPC server
+- **`OLCAClient`** - Main client for connecting to openLCA IPC server (`read_only=True` for safe mode)
 - **`search`** - Search and discovery utilities for flows, processes, and impact methods
 - **`data`** - Create and modify flows, exchanges, and processes
 - **`systems`** - Build and configure product systems
-- **`calculate`** - Run LCA calculations with various configurations
-- **`results`** - Extract and format calculation results
-- **`contributions`** - Analyze contributions by process or flow
+- **`calculate`** - Run LCA calculations and compare scenarios
+- **`results`** - Extract and format results (impacts, inventory, normalization, Sankey, requirements)
+- **`contributions`** - Contribution analysis, top contributors, and recursive contribution trees
 - **`uncertainty`** - Monte Carlo simulations and statistical analysis
 - **`parameters`** - Parameter scenarios and sensitivity analysis
 - **`export`** - Export results to CSV, Excel, and other formats
+- **`agent`** - Compact JSON summaries, reproducibility context, structured errors, health check (AI/MCP layer)
+- **`diagnostics`** - Runtime result consistency checks
 
 ## Best Practices
 
@@ -316,11 +329,12 @@ client = OLCAClient(port=8080)
 
 ## Documentation
 
+- **[Quick Start](documentation/quickstart.md)** - Step-by-step guide including v0.4 analysis functions
+- **[Agent & MCP Guide](documentation/agent-usage.md)** - Structured responses, reproducibility, safe mode
+- **[API Reference](documentation/api/README.md)** - Module structure and all API methods
 - **[Setup Guide](documentation/installation.md)** - Detailed installation and configuration
 - **[Examples](examples/)** - Working example scripts and Jupyter notebooks
-- **[API Reference](documentation/api/README.md)** - Module structure and API details
 - **[Complete Documentation](documentation/index.md)** - Full documentation hub
-- **[MCP Server](https://github.com/dernestbank/openlca-mcp)** - For AI agent automation (standalone repo)
 
 ## Requirements
 
@@ -344,7 +358,7 @@ Install with `pip install openlca-ipc[full]`:
 
 ```bash
 # Clone repository
-git clone https://github.com/dernestbank/openlca-ipc.git
+git clone https://github.com/SDAI-institute/openlca-ipc.git
 cd openlca-ipc
 
 # Create conda environment (if using conda)
@@ -436,7 +450,7 @@ If you use this library in your research, please cite:
   author = {Danquah Boakye, Ernest},
   title = {openLCA IPC Python Library},
   year = {2025},
-  url = {https://github.com/dernestbank/openlca-ipc}
+  url = {https://github.com/SDAI-institute/openlca-ipc}
 }
 ```
 
@@ -448,7 +462,7 @@ If you use this library in your research, please cite:
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/dernestbank/openlca-ipc/issues)
+- **Issues**: [GitHub Issues](https://github.com/SDAI-institute/openlca-ipc/issues)
 - **Documentation**: [Read the Docs](documentation/DOCUMENTATION_MAP.md)
 - **Email**: dernestbanksch@gmail.com
 

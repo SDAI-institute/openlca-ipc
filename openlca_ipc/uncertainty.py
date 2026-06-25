@@ -92,58 +92,56 @@ class UncertaintyAnalyzer:
         # Create simulation setup
         setup = o.CalculationSetup()
         setup.target = system
-        setup.impact_method = impact_method.to_ref()
+        setup.impact_method = (
+            impact_method.to_ref()
+            if hasattr(impact_method, 'to_ref')
+            else impact_method
+        )
         setup.amount = amount
-        
-        # Create simulator
-        simulator = self.client.simulator(setup)
-        logger.info(f"Starting Monte Carlo simulation with {iterations} iterations")
-        
-        # Store results for each impact category
-        impact_values = {}
-        
+
+        # client.simulate() returns a Result that acts as the simulator
+        result = self.client.simulate(setup)
+        logger.info("Starting Monte Carlo simulation with %d iterations", iterations)
+
+        # Store impact values across iterations: {category_name: [value, ...]}
+        impact_values: Dict[str, List[float]] = {}
+
         try:
             for i in range(iterations):
-                # Run simulation
-                result = self.client.next_simulation(simulator)
-                
-                # Collect impact values
-                for impact_result in result.impact_results:
-                    cat_name = impact_result.impact_category.name
-                    value = (impact_result.amount if hasattr(impact_result, 'amount')
-                            else impact_result.value if hasattr(impact_result, 'value')
-                            else 0)
-                    
+                result.simulate_next()
+
+                for iv in result.get_total_impacts():
+                    cat = iv.impact_category
+                    cat_name = cat.name if cat else ''
+                    value = iv.amount if iv.amount is not None else 0.0
                     if cat_name not in impact_values:
                         impact_values[cat_name] = []
                     impact_values[cat_name].append(value)
-                
-                # Progress callback
+
                 if progress_callback and (i + 1) % 100 == 0:
                     progress_callback(i + 1, iterations)
-            
-            # Analyze results
-            uncertainty_results = {}
+
+            # Analyse collected distributions
+            uncertainty_results: Dict[str, UncertaintyResult] = {}
             for impact_name, values in impact_values.items():
                 arr = np.array(values)
-                
+                mean = float(np.mean(arr))
                 uncertainty_results[impact_name] = UncertaintyResult(
                     impact_name=impact_name,
                     values=arr,
-                    mean=np.mean(arr),
-                    std=np.std(arr),
-                    median=np.median(arr),
-                    percentile_5=np.percentile(arr, 5),
-                    percentile_95=np.percentile(arr, 95),
-                    cv=np.std(arr) / np.mean(arr) if np.mean(arr) != 0 else 0
+                    mean=mean,
+                    std=float(np.std(arr)),
+                    median=float(np.median(arr)),
+                    percentile_5=float(np.percentile(arr, 5)),
+                    percentile_95=float(np.percentile(arr, 95)),
+                    cv=float(np.std(arr) / mean) if mean != 0 else 0.0,
                 )
-            
-            logger.info(f"Monte Carlo simulation complete")
+
+            logger.info("Monte Carlo simulation complete")
             return uncertainty_results
-            
+
         finally:
-            # Always dispose simulator
-            self.client.dispose(simulator)
+            result.dispose()
     
     def compare_with_uncertainty(
         self,

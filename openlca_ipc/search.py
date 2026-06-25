@@ -103,11 +103,7 @@ class SearchUtils:
             'steel production'
         """
         try:
-            # Handle both method names for compatibility
-            if hasattr(self.client, 'get_providers'):
-                tech_flows = list(self.client.get_providers(flow))
-            else:
-                tech_flows = list(self.client.get_providers_of(flow))
+            tech_flows = list(self.client.get_providers(flow))
             
             # Extract process references from TechFlow objects
             providers = []
@@ -153,18 +149,42 @@ class SearchUtils:
     def find_impact_method(self, keywords: List[str]) -> Optional[o.ImpactMethod]:
         """
         Find an impact method by keywords.
-        
+
         Args:
             keywords: Method name keywords (e.g., ['TRACI'], ['ReCiPe'])
-        
+
         Returns:
             Impact method object, or None
         """
         keywords_lower = [k.lower() for k in keywords]
-        
+
         for method_ref in self.client.get_descriptors(o.ImpactMethod):
-            if any(kw in method_ref.name.lower() for kw in keywords_lower):
+            if all(kw in method_ref.name.lower() for kw in keywords_lower):
                 return self.client.get(o.ImpactMethod, method_ref.id)
-        
+
         return None
+
+    def get_by_name(self, model_type, name: str) -> Optional[o.Ref]:
+        """
+        Look up a single entity by its exact name.
+
+        Wraps ``client.find(model_type, name)`` — an exact-match lookup that
+        complements the partial keyword search of ``find_flows`` /
+        ``find_processes``. Useful when the agent already knows the precise
+        name (e.g. from a prior search result).
+
+        Args:
+            model_type: An olca_schema model class (``o.Flow``, ``o.Process``,
+                ``o.ImpactMethod``, ``o.ProductSystem``, ...).
+            name: Exact entity name.
+
+        Returns:
+            A reference (``o.Ref``) to the matching entity, or None.
+        """
+        try:
+            return self.client.find(model_type, name)
+        except Exception as e:
+            type_name = getattr(model_type, '__name__', model_type)
+            logger.warning("Error finding %s named %r: %s", type_name, name, e)
+            return None
 
