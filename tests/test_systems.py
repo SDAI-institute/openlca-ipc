@@ -40,6 +40,29 @@ class TestSystemBuilder:
         assert config.prefer_unit_processes is True
         assert config.provider_linking == o.ProviderLinking.ONLY_DEFAULTS
 
+    def test_create_product_system_passes_cutoff(
+        self, mock_ipc_client, sample_process
+    ):
+        """v0.4.1: a cutoff is threaded into the LinkingConfig."""
+        mock_ipc_client.create_product_system.return_value = o.Ref(id="s1", name="S")
+
+        sb = SystemBuilder(mock_ipc_client)
+        sb.create_product_system(sample_process, cutoff=0.05)
+
+        config = mock_ipc_client.create_product_system.call_args[0][1]
+        assert config.cutoff == 0.05
+
+    def test_create_product_system_no_cutoff_by_default(
+        self, mock_ipc_client, sample_process
+    ):
+        mock_ipc_client.create_product_system.return_value = o.Ref(id="s1", name="S")
+
+        sb = SystemBuilder(mock_ipc_client)
+        sb.create_product_system(sample_process)
+
+        config = mock_ipc_client.create_product_system.call_args[0][1]
+        assert config.cutoff is None
+
     def test_create_product_system_prefer_defaults(
         self, mock_ipc_client, sample_process
     ):

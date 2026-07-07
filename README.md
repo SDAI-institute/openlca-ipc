@@ -376,12 +376,49 @@ pip install -r requirements-dev.txt
 # Install test dependencies
 pip install pytest pytest-cov
 
-# Run tests
+# Run tests (mocked suite only — this is what CI runs; live tests are
+# excluded by default via the `not live` addopts in pyproject.toml)
 pytest tests/
 
 # Run with coverage
 pytest --cov=openlca_ipc tests/
 ```
+
+### Live integration tests
+
+Tests marked `@pytest.mark.live` exercise the library against a **real,
+running openLCA instance** instead of mocks. They are excluded from the
+default `pytest` run (and from CI) and must be run explicitly:
+
+```bash
+# 1. Start openLCA Desktop, open a database, and start the IPC server
+#    (Tools -> Developer tools -> IPC server). Default port 8080; override
+#    with OLCA_IPC_PORT if needed.
+
+# 2. Run the live suite
+pytest -m live
+
+# Or a specific file:
+pytest -m live tests/test_golden_live.py       # synthetic system, any DB, no license needed
+pytest -m live tests/test_unit_fuzzing_live.py # unit-derivation regression (F1 bug class)
+pytest -m live tests/test_search_live.py       # provider-location invariants (F3 bug class)
+
+OLCA_IPC_PORT=9090 pytest -m live              # custom port
+```
+
+Three tiers of live tests, by database requirement:
+
+| File | Requires | What it checks |
+|---|---|---|
+| `test_live_integration.py` | any openLCA DB | basic connect/search/create/calculate smoke tests |
+| `test_golden_live.py` | any openLCA DB (no license) | a fully synthetic system with a **hand-derived** expected answer (see `openlca-ipc case studies/case2-golden-handcalc.md`) — determinism + linear-scaling regression |
+| `test_unit_fuzzing_live.py`, `test_search_live.py` | a background dataset (e.g. ecoinvent) for realistic flow/provider variety | non-mass unit derivation and provider-geography invariants; individual cases are skipped (not failed) if a needed flow isn't present |
+| `test_golden_pet_live.py` | ecoinvent 3.10 Cutoff specifically | regression guard against `fixtures/pet_golden.json`, our own verified PET/PC tutorial reproduction (see `openlca-ipc case studies/case1-report.md`) |
+
+All live tests create entities with a distinctive name prefix and delete them
+in a `finally`/fixture-teardown block, so a failed run should not leave test
+data behind — but if it does, filter the openLCA Navigator by the prefix
+shown in the test file to clean up manually.
 
 ### Code Quality
 

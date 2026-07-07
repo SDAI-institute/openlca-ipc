@@ -111,6 +111,34 @@ class TestSearchUtils:
         search = SearchUtils(mock_ipc_client)
         assert search.find_impact_method(['TRACI']) is None
 
+    def test_find_impact_method_version_normalization(self, mock_ipc_client):
+        """v0.4.1: 'EF v3.1' resolves to 'EF 3.1 Method (adapted)'."""
+        ef = o.Ref(id="ef31", name="EF 3.1 Method (adapted)")
+        mock_ipc_client.get_descriptors.return_value = [
+            o.Ref(id="ef30", name="EF 3.0 Method (adapted)"),
+            ef,
+            o.Ref(id="traci", name="TRACI 2.1"),
+        ]
+        full = o.ImpactMethod(id="ef31", name="EF 3.1 Method (adapted)")
+        mock_ipc_client.get.side_effect = None
+        mock_ipc_client.get.return_value = full
+
+        search = SearchUtils(mock_ipc_client)
+        result = search.find_impact_method(['EF v3.1'])
+        assert result is not None and result.id == "ef31"
+
+    def test_find_impact_methods_ranked(self, mock_ipc_client):
+        """find_impact_methods returns ranked candidates, best first."""
+        mock_ipc_client.get_descriptors.return_value = [
+            o.Ref(id="ef30", name="EF 3.0 Method (adapted)"),
+            o.Ref(id="ef31", name="EF 3.1 Method (adapted)"),
+            o.Ref(id="traci", name="TRACI 2.1"),
+        ]
+        search = SearchUtils(mock_ipc_client)
+        hits = search.find_impact_methods(['EF v3.1'])
+        assert hits[0].id == "ef31"  # full 'ef'+'3.1' match ranks first
+        assert all(h.id != "traci" for h in hits)
+
     def test_find_providers(self, mock_ipc_client, sample_flow):
         """find_providers extracts provider refs from TechFlow objects."""
         provider_ref = o.Ref(id="p1", name="Steel producer")

@@ -5,6 +5,63 @@ All notable changes to **openlca-ipc** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-07-01
+
+### Fixed (correctness — surfaced by reproducing the openLCA PET-vs-PC tutorial)
+
+- **`DataBuilder.create_exchange` no longer hardcodes Mass/kg.** It now derives
+  the exchange's flow property and unit from the flow's **reference flow
+  property**, so non-mass flows (e.g. transport in `t*km`, energy in `MJ`) are
+  measured correctly. Previously every exchange was forced to Mass/kg; openLCA
+  silently dropped the invalid unit on a `t*km` transport flow and fell back to
+  its reference unit, inflating a `0.065*500 kg*km` (=0.0325 t*km) transport
+  input to **32.5 t*km — a ~1000× error** that dominated results. New optional
+  keyword args: `unit`, `flow_property` (overrides) and `formula` (stores an
+  openLCA amount formula such as `"0.065*500"`). Mass-flow behaviour unchanged.
+- **`ExportManager.export_impacts_to_csv` no longer crashes** with
+  `dict contains fields not in fieldnames: 'category'`. Header is now built from
+  the keys actually present, nested objects are flattened, and
+  `extrasaction='ignore'` guards unexpected keys.
+- **`SearchUtils.find_impact_method` is version-noise tolerant.** `['EF v3.1']`
+  now resolves to `"EF 3.1 Method (adapted)"` (previously returned `None`). Added
+  `find_impact_methods(keywords, max_results=10)` returning ranked candidates.
+- **`ParameterManager.run_scenario_analysis` fails loudly on unknown
+  parameters** instead of silently returning the baseline for every value.
+  Added `find_global_parameter(name)`.
+
+### Added
+
+- **`SystemBuilder.create_product_system(..., cutoff=<float>)`** exposes the
+  linking cut-off (openLCA tutorial ch. 6.3 uses `0.05` for a 5% cut-off).
+- **`DataBuilder.check_mass_balance(process, *, rel_tol=1e-3)`** — flags
+  processes whose Mass-property inputs and outputs don't balance (the
+  tutorial explicitly warns openLCA does not check this automatically).
+
+### Testing (bug-class prevention + regression guards)
+
+- **Unit-fuzzing** (`tests/test_data.py`, `tests/test_unit_fuzzing_live.py`):
+  parametrized mocked + live tests across Mass, Energy, Volume, Land use,
+  Goods transport, and Number-of-items flow properties, plus a regression
+  guard that the reference unit is chosen via `is_ref_unit`, not list order or
+  a `conversion_factor == 1.0` coincidence — this exact ambiguity was a latent
+  bug in the initial `create_exchange` fix, caught by writing this test suite.
+- **Provider-location invariants** (`tests/test_search_live.py`): every
+  `find_providers` result carries a `location`, and same-named providers are
+  always distinguished by it — the condition whose absence caused the
+  original F3 defect.
+- **Synthetic golden system** (`tests/fixtures/golden_system.py`,
+  `tests/test_golden_live.py`): a fully synthetic, license-free system (custom
+  elementary flow + impact method/category + 2-level process chain) with a
+  hand-derived expected answer (6.5 kg CO2e) — an independent cross-check that
+  needs no external database, plus a determinism regression (5 repeated
+  calculations must be identical).
+- **PET/PC regression baseline** (`tests/fixtures/pet_system.py` — shared with
+  `case1_repeatability.ipynb` — `tests/fixtures/pet_golden.json`,
+  `tests/test_golden_pet_live.py`): locks in our own verified post-fix PET/PC
+  results as a regression guard, independent of the tutorial PDF's published
+  numbers (which differ by a known, root-caused ~0.78x background-dataset
+  factor — see `openlca-ipc case studies/case1-findings.md`).
+
 ## [0.4.0] - 2026-06-25
 
 ### Added

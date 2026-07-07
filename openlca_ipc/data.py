@@ -27,7 +27,8 @@ class DataBuilder:
         self.client = client
         self._mass_prop = None
         self._kg_unit = None
-    
+        self._mass_unit_cfs = None
+
     @property
     def mass_property(self) -> o.FlowProperty:
         """Get or cache the Mass flow property."""
@@ -48,7 +49,84 @@ class DataBuilder:
                 unit_group.units[0]
             )
         return self._kg_unit
-    
+
+    def _mass_unit_conversion_factors(self) -> dict:
+        """Get or cache {unit name -> conversion factor to kg} for the Mass
+        flow property's unit group."""
+        if self._mass_unit_cfs is None:
+            unit_group = self.client.get(o.UnitGroup, self.mass_property.unit_group.id)
+            self._mass_unit_cfs = {
+                u.name: u.conversion_factor for u in (unit_group.units or [])
+            }
+        return self._mass_unit_cfs
+
+    def check_mass_balance(
+        self, process: o.Process, *, rel_tol: float = 1e-3
+    ) -> List[str]:
+        """
+        Check that total input mass equals total output mass for a process.
+
+        openLCA does not enforce conservation of mass (the tutorial explicitly
+        warns: input mass should equal output mass, but this is not checked
+        automatically). This inspects only exchanges whose flow property is
+        **Mass** (any other property — transport, energy, items, ... — is
+        skipped, since summing across incompatible units would be meaningless),
+        converts each to kg using the Mass unit group's conversion factors, and
+        compares the input and output totals.
+
+        Args:
+            process: A process with populated ``exchanges`` (e.g. the object
+                returned by :meth:`create_process`).
+            rel_tol: Relative tolerance (fraction of the larger total) before a
+                warning is raised.
+
+        Returns:
+            A list of warning strings; empty if balanced (or if the process has
+            no Mass-property exchanges to check).
+
+        Example:
+            >>> process = data.create_process("PET Granulate Production", exchanges=[...])
+            >>> for w in data.check_mass_balance(process):
+            ...     print(w)
+        """
+        exchanges = getattr(process, "exchanges", None) or []
+        unit_cfs = self._mass_unit_conversion_factors()
+
+        total_in = 0.0
+        total_out = 0.0
+        seen_any = False
+        for ex in exchanges:
+            fp_name = getattr(ex.flow_property, "name", None)
+            if fp_name != "Mass":
+                continue
+            unit_name = getattr(ex.unit, "name", None)
+            cf = unit_cfs.get(unit_name)
+            if cf is None or ex.amount is None:
+                continue
+            seen_any = True
+            kg = ex.amount * cf
+            if ex.is_input:
+                total_in += kg
+            else:
+                total_out += kg
+
+        if not seen_any:
+            return []
+
+        diff = total_out - total_in
+        denom = max(abs(total_in), abs(total_out), 1e-12)
+        rel = abs(diff) / denom
+        if rel <= rel_tol:
+            return []
+
+        name = getattr(process, "name", "<unnamed>")
+        return [
+            f"Mass balance violated for process {name!r}: inputs sum to "
+            f"{total_in:.6g} kg, outputs sum to {total_out:.6g} kg "
+            f"({rel * 100:.1f}% relative difference). Conservation of mass "
+            f"requires input mass to equal output mass."
+        ]
+
     def create_product_flow(
         self,
         name: str,
@@ -91,39 +169,116 @@ class DataBuilder:
         logger.info(f"Created product flow: {name}")
         return flow
     
+    def _reference_property_and_unit(
+        self, flow: Union[o.Flow, o.Ref]
+    ) -> Tuple[o.Ref, o.Ref]:
+        """Resolve the reference flow property and its reference unit for a flow.
+
+        openLCA measures each exchange in one of the flow's own flow properties;
+        the amount is interpreted in that property's unit. Using the *wrong*
+        property/unit (e.g. Mass/kg for a transport flow measured in t*km) makes
+        openLCA drop the unit and silently fall back to the flow's reference
+        unit, producing results that are off by the unit conversion factor. So
+        we always derive the correct reference property/unit from the flow.
+
+        Falls back to Mass/kg only if the flow has no usable properties.
+        """
+        # Ensure we have the flow with its property factors.
+        flow_obj = flow
+        if isinstance(flow, o.Ref) or not getattr(flow, "flow_properties", None):
+            fetched = self.client.get(o.Flow, getattr(flow, "id", None))
+            flow_obj = fetched or flow
+
+        factors = getattr(flow_obj, "flow_properties", None) or []
+        ref_factor = next(
+            (f for f in factors if getattr(f, "is_ref_flow_property", False)),
+            factors[0] if factors else None,
+        )
+        if ref_factor is None or ref_factor.flow_property is None:
+            # No property info available; fall back to Mass/kg.
+            return (
+                o.Ref(id=self.mass_property.id, name=self.mass_property.name,
+                      ref_type=o.RefType.FlowProperty),
+                o.Ref(id=self.kg_unit.id, name=self.kg_unit.name,
+                      ref_type=o.RefType.Unit),
+            )
+
+        fp_ref = ref_factor.flow_property
+        fp_ref = o.Ref(id=fp_ref.id, name=fp_ref.name,
+                       ref_type=o.RefType.FlowProperty)
+
+        # Resolve the reference unit of that flow property's unit group.
+        unit_ref = None
+        try:
+            fp_full = self.client.get(o.FlowProperty, fp_ref.id)
+            ug = self.client.get(o.UnitGroup, fp_full.unit_group.id)
+            units = ug.units or []
+            ref_unit = next(
+                (u for u in units if getattr(u, "is_ref_unit", False)),
+                next((u for u in units if u.conversion_factor == 1.0),
+                     units[0] if units else None),
+            )
+            if ref_unit is not None:
+                unit_ref = o.Ref(id=ref_unit.id, name=ref_unit.name,
+                                 ref_type=o.RefType.Unit)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Could not resolve reference unit for %s: %s",
+                           fp_ref.name, exc)
+
+        if unit_ref is None:
+            unit_ref = o.Ref(id=self.kg_unit.id, name=self.kg_unit.name,
+                             ref_type=o.RefType.Unit)
+        return fp_ref, unit_ref
+
     def create_exchange(
         self,
         flow: Union[o.Flow, o.Ref],
         amount: float,
         is_input: bool,
         is_quantitative_reference: bool = False,
-        provider: Optional[o.Ref] = None
+        provider: Optional[o.Ref] = None,
+        *,
+        unit: Optional[o.Ref] = None,
+        flow_property: Optional[o.Ref] = None,
+        formula: Optional[str] = None,
     ) -> o.Exchange:
         """
         Create an exchange for a process.
-        
+
+        By default the exchange's flow property and unit are derived from the
+        flow's own **reference flow property** (so the ``amount`` is interpreted
+        in the correct unit — e.g. t*km for a transport flow, kg for a mass
+        flow). Override ``unit`` / ``flow_property`` to record the amount in a
+        non-reference property the flow actually defines.
+
         Args:
-            flow: Flow or flow reference
-            amount: Amount in kg
-            is_input: True for input, False for output
-            is_quantitative_reference: True if this is the process output
-            provider: Optional provider process reference
-        
+            flow: Flow or flow reference.
+            amount: Amount, expressed in ``unit`` (default: the flow's reference
+                unit).
+            is_input: True for input, False for output.
+            is_quantitative_reference: True if this is the process reference.
+            provider: Optional provider process reference.
+            unit: Optional explicit unit Ref (must belong to a flow property the
+                flow defines).
+            flow_property: Optional explicit flow-property Ref.
+            formula: Optional openLCA amount formula (e.g. ``"0.065*500"``);
+                stored on the exchange so the value is parameterised/traceable.
+
         Returns:
             Exchange object
-        
+
         Example:
             >>> steel_flow = search.find_flow(['steel'])
             >>> steel_provider = search.find_best_provider(steel_flow)
             >>> exchange = data.create_exchange(
-            ...     steel_flow, 
-            ...     amount=1.0, 
+            ...     steel_flow,
+            ...     amount=1.0,
             ...     is_input=True,
-            ...     provider=steel_provider
+            ...     provider=steel_provider,
             ... )
         """
         ex = o.Exchange()
-        
+
         # Handle flow reference
         if isinstance(flow, o.Ref):
             ex.flow = flow
@@ -135,21 +290,22 @@ class DataBuilder:
             )
         else:
             raise TypeError(f"Flow must be Flow or Ref, not {type(flow)}")
-        
+
+        # Derive the correct flow property + unit from the flow unless the
+        # caller supplied explicit overrides.
+        if flow_property is None or unit is None:
+            derived_fp, derived_unit = self._reference_property_and_unit(flow)
+            flow_property = flow_property or derived_fp
+            unit = unit or derived_unit
+
         ex.amount = amount
-        ex.unit = o.Ref(
-            id=self.kg_unit.id,
-            name=self.kg_unit.name,
-            ref_type=o.RefType.Unit
-        )
-        ex.flow_property = o.Ref(
-            id=self.mass_property.id,
-            name=self.mass_property.name,
-            ref_type=o.RefType.FlowProperty
-        )
+        if formula:
+            ex.formula = formula
+        ex.unit = unit
+        ex.flow_property = flow_property
         ex.is_input = is_input
         ex.is_quantitative_reference = is_quantitative_reference
-        
+
         # Link provider
         if provider:
             if isinstance(provider, o.Ref):
@@ -160,7 +316,7 @@ class DataBuilder:
                     name=provider.name,
                     ref_type=o.RefType.Process
                 )
-        
+
         return ex
     
     def create_process(

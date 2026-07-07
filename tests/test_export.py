@@ -7,6 +7,7 @@ The Excel path delegates to client.excel_export(); that call is mocked.
 import csv
 import pytest
 from unittest.mock import MagicMock
+import olca_schema as o
 from openlca_ipc.export import ExportManager
 
 
@@ -102,6 +103,27 @@ class TestExportManager:
         assert rows[0]['name'] == 'Global warming'
         assert float(rows[0]['amount']) == pytest.approx(2.5)
         assert rows[0]['unit'] == 'kg CO2 eq'
+
+    def test_export_impacts_to_csv_with_category_field(self, mock_ipc_client, tmp_path):
+        """v0.4.1: rows carrying a nested 'category' Ref (as produced by the
+        results layer) must not crash the writer and should be flattened."""
+        impacts = [{
+            "name": "Climate change",
+            "category": o.Ref(id="c-1", name="EF 3.1 / Climate change"),
+            "category_id": "c-1",
+            "amount": 0.2144,
+            "unit": "kg CO2 eq",
+        }]
+        filepath = tmp_path / "with_category.csv"
+        em = ExportManager(mock_ipc_client)
+        assert em.export_impacts_to_csv(impacts, str(filepath)) is True
+
+        with open(filepath, encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        assert rows[0]["name"] == "Climate change"
+        assert rows[0]["category"] == "EF 3.1 / Climate change"  # flattened
+        assert rows[0]["category_id"] == "c-1"
+        assert float(rows[0]["amount"]) == pytest.approx(0.2144)
 
     def test_export_impacts_to_csv_returns_false_for_empty(
         self, mock_ipc_client, tmp_path

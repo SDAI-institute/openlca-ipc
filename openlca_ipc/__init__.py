@@ -15,7 +15,7 @@ Based on olca-ipc 2.6+ and olca-schema 2.6+, this library follows
 ISO-14040/14044 standards for life cycle assessment (LCA) workflows.
 """
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 __author__ = "Ernest Boakye Danquah"
 
 from .client import OLCAClient

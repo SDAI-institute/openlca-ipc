@@ -34,6 +34,7 @@ class SystemBuilder:
         name: Optional[str] = None,
         default_providers: str = 'prefer',
         preferred_type: str = 'LCI_RESULT',
+        cutoff: Optional[float] = None,
     ) -> Optional[o.Ref]:
         """
         Create a product system from a process.
@@ -49,6 +50,10 @@ class SystemBuilder:
                 ``'ignore'`` — ignore all default providers.
             preferred_type: ``'LCI_RESULT'`` (default) links to LCI-result
                 processes; ``'UNIT_PROCESS'`` prefers unit processes.
+            cutoff: Optional linking cut-off in [0, 1). Providers contributing
+                less than this fraction of the upstream demand are not linked
+                (openLCA tutorial ch. 6.3 uses 0.05 for a 5% cut-off). ``None``
+                (default) builds the full upstream network.
 
         Returns:
             Product system reference (o.Ref), or None on failure.
@@ -61,6 +66,8 @@ class SystemBuilder:
                 prefer_unit_processes=(preferred_type == 'UNIT_PROCESS'),
                 provider_linking=provider_linking,
             )
+            if cutoff is not None:
+                config.cutoff = cutoff
             system_ref = self.client.create_product_system(process, config)
 
             if system_ref and name:

@@ -41,6 +41,32 @@ class TestCalculationManager:
         assert setup.amount == 1.0
         assert setup.impact_method is not None
 
+    def test_simple_calculation_no_allocation_by_default(
+        self, mock_ipc_client, sample_product_system, sample_impact_method
+    ):
+        """Without an explicit allocation, setup.allocation stays unset (no
+        behavior change for single-output processes)."""
+        mock_ipc_client.calculate.return_value = MagicMock()
+        calc = CalculationManager(mock_ipc_client)
+        calc.simple_calculation(system=sample_product_system, impact_method=sample_impact_method)
+        setup = mock_ipc_client.calculate.call_args[0][0]
+        assert setup.allocation is None
+
+    @pytest.mark.parametrize("allocation", [
+        o.AllocationType.PHYSICAL_ALLOCATION, "PHYSICAL_ALLOCATION",
+    ])
+    def test_simple_calculation_accepts_allocation_enum_or_string(
+        self, mock_ipc_client, sample_product_system, sample_impact_method, allocation
+    ):
+        mock_ipc_client.calculate.return_value = MagicMock()
+        calc = CalculationManager(mock_ipc_client)
+        calc.simple_calculation(
+            system=sample_product_system, impact_method=sample_impact_method,
+            allocation=allocation,
+        )
+        setup = mock_ipc_client.calculate.call_args[0][0]
+        assert setup.allocation == o.AllocationType.PHYSICAL_ALLOCATION
+
     def test_simple_calculation_without_method(self, mock_ipc_client, sample_product_system):
         """simple_calculation works without an impact method (inventory only)."""
         mock_result = MagicMock()

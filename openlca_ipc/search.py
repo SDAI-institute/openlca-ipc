@@ -7,11 +7,26 @@ Advanced search and discovery utilities.
 """
 
 import logging
-from typing import List, Optional, Iterator
+import re
+from typing import List, Optional, Iterator, Tuple
 import olca_schema as o
 import olca_ipc as ipc
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize(text: str) -> str:
+    """Lowercase and canonicalise a method string for matching.
+
+    Collapses version-noise so that a query like ``"EF v3.1"`` matches a stored
+    name like ``"EF 3.1 Method (adapted)"``: drops the ``v`` in ``v3.1``,
+    normalises punctuation/whitespace to single spaces.
+    """
+    t = (text or "").lower()
+    t = re.sub(r"\bv(\d)", r"\1", t)          # v3.1 -> 3.1
+    t = re.sub(r"[^a-z0-9.]+", " ", t)        # punctuation -> space
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
 
 
 class SearchUtils:
@@ -146,23 +161,63 @@ class SearchUtils:
         
         return matches
     
-    def find_impact_method(self, keywords: List[str]) -> Optional[o.ImpactMethod]:
+    def find_impact_methods(
+        self, keywords: List[str], max_results: int = 10
+    ) -> List[o.Ref]:
         """
-        Find an impact method by keywords.
+        Find impact-method descriptors matching keywords, best match first.
+
+        Matching is version-noise tolerant (``"EF v3.1"`` matches
+        ``"EF 3.1 Method (adapted)"``). Candidates are ranked by how many query
+        tokens they contain, then by name length (shorter = closer).
 
         Args:
-            keywords: Method name keywords (e.g., ['TRACI'], ['ReCiPe'])
+            keywords: Method name keywords, e.g. ``['EF v3.1']``, ``['TRACI']``.
+            max_results: Maximum number of ranked candidates to return.
+
+        Returns:
+            A list of method references (possibly empty), best match first.
+        """
+        tokens = [tok for kw in keywords for tok in _normalize(kw).split()]
+        if not tokens:
+            return []
+
+        scored: List[Tuple[int, int, o.Ref]] = []
+        for ref in self.client.get_descriptors(o.ImpactMethod):
+            norm = _normalize(ref.name)
+            hits = sum(1 for t in tokens if t in norm)
+            if hits:
+                scored.append((hits, -len(norm), ref))
+        scored.sort(key=lambda s: (-s[0], -s[1]))
+        return [ref for _, _, ref in scored[:max_results]]
+
+    def find_impact_method(self, keywords: List[str]) -> Optional[o.ImpactMethod]:
+        """
+        Find the single best impact method by keywords.
+
+        Version-noise tolerant: ``['EF v3.1']`` resolves to
+        ``"EF 3.1 Method (adapted)"``. Returns the full method (with impact
+        categories) or None. Prefers a candidate that contains *all* query
+        tokens; otherwise falls back to the best partial match.
+
+        Args:
+            keywords: Method name keywords (e.g., ['TRACI'], ['EF v3.1']).
 
         Returns:
             Impact method object, or None
         """
-        keywords_lower = [k.lower() for k in keywords]
+        tokens = [tok for kw in keywords for tok in _normalize(kw).split()]
+        candidates = self.find_impact_methods(keywords, max_results=25)
+        if not candidates:
+            return None
 
-        for method_ref in self.client.get_descriptors(o.ImpactMethod):
-            if all(kw in method_ref.name.lower() for kw in keywords_lower):
-                return self.client.get(o.ImpactMethod, method_ref.id)
-
-        return None
+        # Prefer a full-token match if one exists.
+        full = [
+            ref for ref in candidates
+            if all(t in _normalize(ref.name) for t in tokens)
+        ]
+        chosen = (full or candidates)[0]
+        return self.client.get(o.ImpactMethod, chosen.id)
 
     def get_by_name(self, model_type, name: str) -> Optional[o.Ref]:
         """

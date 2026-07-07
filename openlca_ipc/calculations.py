@@ -28,19 +28,27 @@ class CalculationManager:
         self,
         system: o.Ref,
         impact_method: Optional[o.ImpactMethod] = None,
-        amount: float = 1.0
+        amount: float = 1.0,
+        *,
+        allocation: Optional[Union[str, o.AllocationType]] = None,
     ):
         """
         Perform a simple calculation.
-        
+
         Args:
             system: Product system reference
             impact_method: Optional impact method
             amount: Reference amount (default: 1.0)
-        
+            allocation: Optional allocation method for multi-output processes
+                (``o.AllocationType`` or its string value, e.g.
+                ``"PHYSICAL_ALLOCATION"``, ``"ECONOMIC_ALLOCATION"``,
+                ``"CAUSAL_ALLOCATION"``). Applies each process's own
+                pre-declared ``allocation_factors`` for that method; has no
+                effect on processes with a single reference product.
+
         Returns:
             Calculation result
-        
+
         Example:
             >>> result = calculate.simple_calculation(
             ...     system=my_system,
@@ -53,12 +61,18 @@ class CalculationManager:
         setup = o.CalculationSetup()
         setup.target = system
         setup.amount = amount
-        
+
         if impact_method:
             setup.impact_method = (
                 impact_method.to_ref()
                 if hasattr(impact_method, 'to_ref')
                 else impact_method
+            )
+
+        if allocation is not None:
+            setup.allocation = (
+                allocation if isinstance(allocation, o.AllocationType)
+                else o.AllocationType(allocation)
             )
 
         result = self.client.calculate(setup)
