@@ -24,20 +24,57 @@ Complete API documentation for all modules in the openLCA IPC Python library.
 ### Utilities
 - [ExportManager](export.md) - Export results to CSV, Excel, and other formats
 
+### Agent & Automation Layer *(v0.4+)*
+- [Agent subpackage](agent.md) - Structured summaries, reproducibility, recoverable errors, health check, read-only mode
+
 ## Quick Navigation
 
 | Module | Primary Use | Key Methods |
 |--------|-------------|-------------|
-| [OLCAClient](client.md) | Connection management | `__init__()`, `test_connection()` |
-| [SearchUtils](search.md) | Finding entities | `find_flow()`, `find_process()`, `find_impact_method()` |
+| [OLCAClient](client.md) | Connection management | `__init__(read_only=False)`, `test_connection()` |
+| [SearchUtils](search.md) | Finding entities | `find_flow()`, `find_impact_method()`, `get_by_name()` |
 | [DataBuilder](data.md) | Creating data | `create_product_flow()`, `create_process()`, `create_exchange()` |
 | [SystemBuilder](systems.md) | Product systems | `create_product_system()`, `auto_complete()` |
-| [CalculationManager](calculations.md) | Running calculations | `simple_calculation()`, `contribution_analysis()` |
-| [ResultsAnalyzer](results.md) | Extracting results | `get_total_impacts()`, `get_inventory_results()` |
-| [ContributionAnalyzer](contributions.md) | Contribution analysis | `get_top_contributors()`, `get_process_contributions()` |
+| [CalculationManager](calculations.md) | Running calculations | `simple_calculation()`, `compare_systems()` |
+| [ResultsAnalyzer](results.md) | Extracting results | `get_total_impacts()`, `get_inventory()`, `get_normalized_impacts()`, `get_sankey()` |
+| [ContributionAnalyzer](contributions.md) | Contribution analysis | `get_top_contributors()`, `get_contribution_tree()` |
 | [UncertaintyAnalyzer](uncertainty.md) | Uncertainty analysis | `run_monte_carlo()`, `compare_with_uncertainty()` |
 | [ParameterManager](parameters.md) | Parameter scenarios | `run_scenario_analysis()`, `create_parameter_redef()` |
 | [ExportManager](export.md) | Data export | `export_to_csv()`, `export_to_excel()` |
+| [Agent layer](agent.md) | Agent / MCP use | `health_check()`, `ResultSummary`, `CalculationContext`, `OLCAError` |
+
+## What's New in v0.4
+
+### New result methods on existing managers
+
+**`ContributionAnalyzer`**
+- `get_contribution_tree(result, impact_category, *, max_depth=3, min_share=0.01)` — nested `TreeNode` tree of upstream process contributions; pruned by depth and minimum share.
+
+**`ResultsAnalyzer`**
+- `get_inventory(result, *, direction='both')` — full elementary-flow inventory, filterable by `'input'`/`'output'`/`'both'`.
+- `get_normalized_impacts(result)` — normalized impact results as list of `{name, category, amount, unit}` dicts.
+- `get_weighted_impacts(result)` — weighted impact results in the same shape.
+- `get_total_requirements(result)` — technology-matrix scaling vector: `[{process, provider, flow, amount}]`.
+- `get_sankey(result, impact_category, *, max_nodes=50, min_share=0.0)` — Sankey graph data as plain dicts (nodes/edges), suitable for visualization or MCP tools.
+
+**`CalculationManager`**
+- `compare_systems(system1, system2, impact_method, amount=1.0)` — runs both systems and returns `{category: {system1, system2, difference, percent_diff}}`.
+
+**`SearchUtils`**
+- `get_by_name(model_type, name)` — exact entity lookup via `client.find(type, name)`; returns `Ref` or `None`.
+
+### Agent layer (`openlca_ipc.agent`)
+
+See [agent.md](agent.md) for full reference. Highlights:
+- `ResultSummary` / `EntitySummary` — compact JSON payloads for LLM / MCP consumption.
+- `CalculationContext` — captures versions, timestamps, and settings for auditable artifacts.
+- `OLCAError` hierarchy — structured recoverable errors with `error_code` and `suggested_next_actions`.
+- `health_check(client)` — connection probe and entity counts.
+- `OLCAClient(read_only=True)` — write-blocking safe mode.
+
+### Diagnostics
+
+- `check_result_consistency(result)` in `openlca_ipc.diagnostics` — returns warning strings when per-process contributions don't sum to the category total within tolerance.
 
 ## Common Patterns
 

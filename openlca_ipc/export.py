@@ -26,31 +26,69 @@ class ExportManager:
     
     def __init__(self, client: ipc.Client):
         self.client = client
-    
+
+    @staticmethod
+    def _flatten_row(row: Dict) -> Dict:
+        """Coerce a result dict into CSV-writable scalars.
+
+        Nested objects (e.g. a ``category`` Ref) are reduced to their ``name``
+        (or ``str``) so ``csv`` does not choke on them.
+        """
+        flat = {}
+        for k, v in row.items():
+            if v is None or isinstance(v, (str, int, float, bool)):
+                flat[k] = v
+            else:
+                flat[k] = getattr(v, "name", None) or str(v)
+        return flat
+
     def export_to_excel(
         self,
         result,
         filepath: str
     ) -> bool:
         """
-        Export calculation result to Excel.
-        
+        Export total impact results to an Excel workbook.
+
+        Requires the ``openpyxl`` package (``pip install openlca-ipc[export]``).
+
         Args:
-            result: Calculation result
-            filepath: Output Excel file path
-        
+            result: Calculation result (olca_ipc Result object).
+            filepath: Output .xlsx file path.
+
         Returns:
-            True if successful
-        
+            True if successful, False otherwise.
+
         Example:
             >>> export.export_to_excel(result, 'lca_results.xlsx')
         """
         try:
-            self.client.excel_export(result, filepath)
-            logger.info(f"Exported results to {filepath}")
+            import openpyxl  # optional dependency
+        except ImportError:
+            logger.error(
+                "Excel export requires openpyxl: pip install 'openlca-ipc[export]'"
+            )
+            return False
+
+        try:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Impact Assessment"
+            ws.append(["Impact Category", "Amount", "Unit"])
+
+            for iv in result.get_total_impacts():
+                cat = iv.impact_category
+                name = cat.name if cat else ''
+                unit = getattr(cat, 'ref_unit', '') or ''
+                amount = iv.amount if iv.amount is not None else 0.0
+                ws.append([name, amount, unit])
+
+            wb.save(filepath)
+            logger.info("Exported results to %s", filepath)
             return True
+
         except Exception as e:
-            logger.error(f"Excel export failed: {e}")
+            logger.error("Excel export failed: %s", e)
             return False
     
     def export_impacts_to_csv(
@@ -76,11 +114,24 @@ class ExportManager:
             with open(filepath, 'w', newline='', encoding='utf-8') as f:
                 if not impacts:
                     return False
-                
-                writer = csv.DictWriter(f, fieldnames=['name', 'amount', 'unit'])
+
+                # Build the header from the preferred columns that are actually
+                # present, then append any other keys. ``extrasaction='ignore'``
+                # keeps unexpected keys from crashing the writer, and each row is
+                # flattened so nested objects (e.g. a ``category`` Ref) become
+                # plain strings instead of raising.
+                preferred = ['name', 'category', 'category_id', 'amount', 'unit']
+                present = set().union(*(row.keys() for row in impacts))
+                fieldnames = [c for c in preferred if c in present]
+                fieldnames += [k for k in present if k not in fieldnames]
+
+                rows = [self._flatten_row(row) for row in impacts]
+                writer = csv.DictWriter(
+                    f, fieldnames=fieldnames, extrasaction='ignore'
+                )
                 writer.writeheader()
-                writer.writerows(impacts)
-            
+                writer.writerows(rows)
+
             logger.info(f"Exported {len(impacts)} impacts to {filepath}")
             return True
             

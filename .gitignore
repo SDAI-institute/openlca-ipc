@@ -1,11 +1,6 @@
 # ============================================================================
-# .gitignore
+# .gitignore — Git ignore patterns
 # ============================================================================
-"""
-Git ignore patterns.
-
-Save this as: .gitignore
-"""
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -91,5 +86,7 @@ docs-local
 .claude 
 docs
 .pypirc
+*.pypirc
+.secrets/
 HOW_IT_WORKS.md
 docs-local

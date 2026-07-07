@@ -1,0 +1,23 @@
+{
+  "_comment": "Regression baseline for the PET/PC tutorial chain (openlca_ipc >= 0.4.1, ecoinvent 3.10 Cutoff, EF 3.1 Method (adapted)). These are OUR verified post-fix numbers from case1-report.md / case1_repeatability.ipynb -- NOT the tutorial PDF's numbers, which differ by a known ~0.78x background-dataset factor documented in case1-findings.md ('Residual ~0.78x'). This file guards against future library/MCP regressions changing OUR results, independent of that external residual.",
+  "method": "EF v3.1",
+  "amount": 1.0,
+  "rel_tol": 0.01,
+  "abs_tol": 1e-06,
+  "impacts": {
+    "pet": {
+      "Climate change": 0.168191,
+      "Climate change (fossil)": 0.167869,
+      "Climate change (biogenic)": 0.000233,
+      "Climate change (land use)": 0.000089,
+      "Acidification": 0.000663
+    },
+    "pc": {
+      "Climate change": 0.472969,
+      "Climate change (fossil)": 0.472703,
+      "Climate change (biogenic)": 0.000260,
+      "Climate change (land use)": 0.000006,
+      "Acidification": 0.001727
+    }
+  }
+}

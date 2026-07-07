@@ -13,12 +13,17 @@ You can cite all versions by using the DOI 10.5281/zenodo.17567634. This DOI rep
 
 - **Simple, Pythonic API** - High-level utilities that abstract complex IPC operations
 - **Comprehensive LCA Workflow** - Search, create, calculate, and analyze in one package
-- **Contribution Analysis** - Identify key contributors to environmental impacts
+- **Contribution Tree** - Recursive upstream contribution trees with depth/share pruning
+- **Full LCI Inventory** - Elementary-flow inventory with input/output direction filter
+- **Normalization & Weighting** - Normalized and weighted impacts in consistent dict format
+- **Sankey Data** - Sankey graph data as plain dicts for visualization or MCP tools
+- **Scenario Comparison** - `compare_systems()` returns per-category difference tables
 - **Uncertainty Analysis** - Monte Carlo simulations with statistical summaries
-- **Scenario Analysis** - Parameter sensitivity and scenario comparison
+- **Parameter Scenarios** - Sensitivity analysis over named parameters
 - **Export Utilities** - CSV and Excel export for results
-- **AI Agent Friendly** - Clear documentation and structured outputs for automation
-- **MCP Server** - Model Context Protocol server for n8n and AI workflow automation
+- **Agent Layer** - Compact JSON summaries, reproducibility metadata, and recoverable structured errors for AI agents and MCP servers
+- **Read-Only Safe Mode** - `OLCAClient(read_only=True)` blocks all writes at the Python layer
+- **Result Consistency Checks** - Runtime invariant warnings when contributions diverge from totals
 - **ISO Compliant** - Follows ISO-14040/14044 LCA standards
 
 ## Installation
@@ -29,7 +34,7 @@ You can cite all versions by using the DOI 10.5281/zenodo.17567634. This DOI rep
 - openLCA desktop application (version 2.x)
 - openLCA IPC server running (Tools → Developer Tools → IPC Server)
 
-### Install from PyPI (Coming Soon)
+### Install from PyPI
 
 ```bash
 pip install openlca-ipc
@@ -39,7 +44,7 @@ pip install openlca-ipc
 
 ```bash
 # Clone the repository
-git clone https://github.com/dernestbank/openlca-ipc.git
+git clone https://github.com/SDAI-institute/openlca-ipc.git
 cd openlca-ipc
 
 # Install in editable mode
@@ -230,16 +235,18 @@ client.export.export_comparison_to_csv(scenarios, 'scenario_results.csv')
 
 The library is organized into specialized modules:
 
-- **`OLCAClient`** - Main client for connecting to openLCA IPC server
-- **`search`** - Search and discovery utilities for flows, processes, and impact methods
+- **`OLCAClient`** - Main client for connecting to openLCA IPC server (`read_only=True` for safe mode)
+- **`search`** - Search and discovery utilities; `get_by_name()` for exact lookup
 - **`data`** - Create and modify flows, exchanges, and processes
 - **`systems`** - Build and configure product systems
-- **`calculate`** - Run LCA calculations with various configurations
-- **`results`** - Extract and format calculation results
-- **`contributions`** - Analyze contributions by process or flow
+- **`calculate`** - Run LCA calculations and `compare_systems()` scenario comparisons
+- **`results`** - Impacts, inventory, normalization, weighting, Sankey, requirements
+- **`contributions`** - Top contributors and recursive contribution trees
 - **`uncertainty`** - Monte Carlo simulations and statistical analysis
 - **`parameters`** - Parameter scenarios and sensitivity analysis
 - **`export`** - Export results to CSV, Excel, and other formats
+- **`agent`** - Compact JSON summaries, reproducibility context, structured errors, health check
+- **`diagnostics`** - Runtime result consistency checks
 
 ## Best Practices
 
@@ -297,11 +304,12 @@ client = OLCAClient(port=8080)
 
 ## Documentation
 
-- **[Setup Guide](https://github.com/dernestbank/openlca-ipc/blob/main/documentation/installation.md)** - Detailed installation and configuration
-- **[Examples](https://github.com/dernestbank/openlca-ipc/tree/main/examples)** - Working example scripts and Jupyter notebooks
-- **[Complete Documentation](https://github.com/dernestbank/openlca-ipc/blob/main/documentation/index.md)** - Full documentation hub
-- **[Quick start guide](https://github.com/dernestbank/openlca-ipc/blob/main/documentation/quickstart.md)** - Module structure and API details
-- **[MCP Server](https://github.com/dernestbank/openlca-ipc/blob/main/mcp-server/README.md)** - For AI agent automation 
+- **[Quick Start](https://github.com/SDAI-institute/openlca-ipc/blob/main/documentation/quickstart.md)** - Step-by-step guide including v0.4 analysis functions
+- **[Agent & MCP Guide](https://github.com/SDAI-institute/openlca-ipc/blob/main/documentation/agent-usage.md)** - Structured responses, reproducibility, safe mode
+- **[API Reference](https://github.com/SDAI-institute/openlca-ipc/blob/main/documentation/api/README.md)** - All modules and methods
+- **[Setup Guide](https://github.com/SDAI-institute/openlca-ipc/blob/main/documentation/installation.md)** - Detailed installation and configuration
+- **[Examples](https://github.com/SDAI-institute/openlca-ipc/tree/main/examples)** - Working example scripts
+- **[Complete Documentation](https://github.com/SDAI-institute/openlca-ipc/blob/main/documentation/index.md)** - Full documentation hub
 
 ## Requirements
 
@@ -325,7 +333,7 @@ Install with `pip install openlca-ipc[full]`:
 
 ```bash
 # Clone repository
-git clone https://github.com/dernestbank/openlca-ipc.git
+git clone https://github.com/SDAI-institute/openlca-ipc.git
 cd openlca-ipc
 
 # Create conda environment (if using conda)
@@ -392,7 +400,7 @@ If you use this library in your research, please cite:
   author = {Danquah Boakye, Ernest},
   title = {openLCA IPC Python Library},
   year = {2025},
-  url = {https://github.com/dernestbank/openlca-ipc}
+  url = {https://github.com/SDAI-institute/openlca-ipc}
 }
 ```
 
@@ -404,8 +412,8 @@ If you use this library in your research, please cite:
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/dernestbank/openlca-ipc/issues)
-- **Documentation**: [Read the Docs](https://github.com/dernestbank/openlca-ipc/blob/main/documentation/DOCUMENTATION_MAP.md)
+- **Issues**: [GitHub Issues](https://github.com/SDAI-institute/openlca-ipc/issues)
+- **Documentation**: [Read the Docs](https://github.com/SDAI-institute/openlca-ipc/blob/main/documentation/DOCUMENTATION_MAP.md)
 - **Email**: dernestbanksch@gmail.com
 
 ---
