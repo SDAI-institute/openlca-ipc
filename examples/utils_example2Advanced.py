@@ -7,7 +7,7 @@ if __name__ == "__main__":
     Complete example demonstrating all advanced features.
     """
     
-    from olca_utils import OLCAClient
+    from openlca_ipc import OLCAClient
     import matplotlib.pyplot as plt
     
     # Initialize client

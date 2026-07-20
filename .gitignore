@@ -1,11 +1,6 @@
 # ============================================================================
-# .gitignore
+# .gitignore — Git ignore patterns
 # ============================================================================
-"""
-Git ignore patterns.
-
-Save this as: .gitignore
-"""
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -81,3 +76,17 @@ dmypy.json
 *.csv
 results/
 outputs/
+
+# Documentation build output (keep source docs in repo)
+docs/_build/
+docs/.doctrees/
+docs/
+docs
+docs-local
+.claude 
+docs
+.pypirc
+*.pypirc
+.secrets/
+HOW_IT_WORKS.md
+docs-local

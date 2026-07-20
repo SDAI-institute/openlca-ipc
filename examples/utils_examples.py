@@ -5,7 +5,7 @@
 if __name__ == "__main__":
     # Example: Complete LCA workflow using the utils library
     
-    from olca_utils import OLCAClient
+    from openlca_ipc import OLCAClient
     
     # Initialize
     client = OLCAClient(port=8080)

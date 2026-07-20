@@ -1,0 +1,99 @@
+# ============================================================================
+# pyproject.toml - Modern Python packaging configuration
+# ============================================================================
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openlca-ipc"
+version = "0.4.1"
+description = "A Python library for interacting with openLCA desktop application through the IPC protocol for life cycle assessment (LCA) workflows."
+readme = "README-pypi.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    {name = "Ernest Boakye Danquah", email = "dernestbanksch@gmail.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+keywords = ["openlca", "lca", "life-cycle-assessment", "ipc", "environmental-impact", "iso-14040", "iso-14044"]
+
+dependencies = [
+    "olca-ipc>=2.6.0",
+    "olca-schema>=2.6.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+full = [
+    "matplotlib>=3.7.0",
+    "pandas>=2.0.0",
+    "scipy>=1.10.0",
+    "openpyxl>=3.1.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "scipy>=1.10.0",
+    "openpyxl>=3.1.0",
+]
+viz = [
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+]
+export = [
+    "pandas>=2.0.0",
+    "openpyxl>=3.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/SDAI-institute/openlca-ipc"
+Documentation = "https://github.com/SDAI-institute/openlca-ipc/tree/main/docs"
+Repository = "https://github.com/SDAI-institute/openlca-ipc"
+Issues = "https://github.com/SDAI-institute/openlca-ipc/issues"
+
+# Only ship the library package; keep tests/examples/docs out of the wheel.
+[tool.setuptools.packages.find]
+include = ["openlca_ipc*"]
+
+# Black configuration
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+
+# isort configuration
+[tool.isort]
+profile = "black"
+line_length = 88
+
+# mypy configuration
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+# pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=openlca_ipc --cov-report=term-missing -m 'not live'"
+markers = [
+    "live: requires a running openLCA IPC server (deselected by default)",
+]

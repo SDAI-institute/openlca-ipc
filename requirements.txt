@@ -1,15 +1,6 @@
-# ============================================================================
-# requirements.txt
-# ============================================================================
-"""
-Core dependencies for olca-utils.
-
-Save this as: requirements.txt
-"""
-
-# Core dependencies
-olca-ipc==2.4.0
-olca-schema==2.4.0
+# Core dependencies (kept in sync with pyproject.toml)
+olca-ipc>=2.4.0
+olca-schema>=2.4.0
 numpy>=1.24.0
 scipy>=1.10.0
 

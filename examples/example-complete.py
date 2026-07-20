@@ -13,7 +13,7 @@ This example shows:
 """
 
 import logging
-from olca_utils import OLCAClient
+from openlca_ipc import OLCAClient
 
 # Configure logging
 logging.basicConfig(
