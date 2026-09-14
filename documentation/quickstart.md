@@ -73,7 +73,7 @@ with OLCAClient(port=8080) as client:
 **What's happening here:**
 1. `find_flow(['steel'])` searches for flows containing "steel"
 2. `find_best_provider()` finds the process that produces this flow
-3. We use `with` statement for automatic cleanup
+3. We use the `with` statement to keep client scope explicit. Calculation results still require explicit `dispose()` cleanup.
 
 ## Step 4: Create a Simple Process
 

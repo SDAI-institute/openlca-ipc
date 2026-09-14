@@ -15,21 +15,22 @@ Welcome to the comprehensive documentation for the openLCA IPC Python library. T
 - [Examples](../examples/README.md) - Working code examples and use cases
 
 ### Advanced Topics
-- [Advanced Usage](advanced-usage.md) - Advanced patterns and techniques
-- [Uncertainty Analysis](advanced/uncertainty-analysis.md) - Monte Carlo simulations and statistical analysis
-- [Contribution Analysis](advanced/contribution-analysis.md) - Process and flow contribution analysis
-- [Scenario Analysis](advanced/scenario-analysis.md) - Parameter sensitivity and scenario comparison
+- [Advanced Usage](advanced-usage.md) - Reproducibility, read-only operation, diagnostics, comparison, scenarios, uncertainty, and upstream analysis
+- [Uncertainty API](api/uncertainty.md) - Monte Carlo simulation and statistical summaries
+- [Contribution API](api/contributions.md) - Process, flow, and upstream contribution analysis
+- [Parameter API](api/parameters.md) - Parameter sensitivity and scenario analysis
 
 ### Reference
+- [Compatibility](compatibility.md) - Declared requirements and verified SDAI environment
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions
 - [FAQ](faq.md) - Frequently asked questions
 - [Best Practices](best-practices.md) - Recommended patterns and practices
 - [Migration Guide](migration.md) - Migrating from raw olca-ipc
 
 ### Development
-- [Contributing Guide](../CONTRIBUTING.md) - How to contribute to this project
-- [Development Setup](development.md) - Setting up development environment
-- [Testing Guide](testing.md) - Running and writing tests
+- [Development Setup](development.md) - Setting up the development environment
+- [Testing Guide](testing.md) - Mocked and live openLCA validation
+- [GitHub repository](https://github.com/SDAI-institute/openlca-ipc) - Issues, source changes, and pull requests
 
 ---
 
@@ -178,8 +179,8 @@ finally:
 
 ## Getting Help
 
-- **Issues**: Report bugs at [GitHub Issues](https://github.com/dernestbank/openlca-ipc/issues)
-- **Discussions**: Ask questions at [GitHub Discussions](https://github.com/dernestbank/openlca-ipc/discussions)
+- **Issues**: Report bugs at [GitHub Issues](https://github.com/SDAI-institute/openlca-ipc/issues)
+- **Repository**: Review source and documentation at [SDAI-institute/openlca-ipc](https://github.com/SDAI-institute/openlca-ipc)
 - **Email**: dernestbanksch@gmail.com
 
 ## License

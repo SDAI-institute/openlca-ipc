@@ -627,7 +627,7 @@ In openLCA, check the console (View → Console) for error messages from the IPC
    - [Examples](../examples/)
 
 2. **Search existing issues:**
-   - [GitHub Issues](https://github.com/dernestbank/openlca-ipc/issues)
+   - [GitHub Issues](https://github.com/SDAI-institute/openlca-ipc/issues)
 
 3. **Create new issue:**
    - Include error message

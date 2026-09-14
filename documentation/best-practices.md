@@ -6,18 +6,17 @@ This guide provides recommended patterns and practices for using the openLCA IPC
 
 ### Use Context Managers
 
-**Always use `with` statement** for automatic resource cleanup:
+Use the `with` statement to keep client scope explicit and consistent. The underlying IPC client does not require a manual `close()` call in current olca-ipc versions; calculation **results** are the resources that must always be disposed.
 
 ```python
-# ✓ Good - automatic cleanup
+# Recommended: keep client scope explicit
 with OLCAClient(port=8080) as client:
     flow = client.search.find_flow(['steel'])
-    # Connection automatically closed
 
-# ✗ Avoid - manual cleanup required
+# Also valid when a longer-lived client is useful
 client = OLCAClient(port=8080)
 flow = client.search.find_flow(['steel'])
-client.client.close()  # Easy to forget!
+# Do not call client.client.close(); current olca-ipc Client has no close() method.
 ```
 
 ### Structure Your Code
@@ -661,7 +660,7 @@ with OLCAClient(port=port) as client:
 
 ## Summary Checklist
 
-- [ ] Use `with` statement for OLCAClient
+- [ ] Prefer `with` statement to keep OLCAClient scope explicit
 - [ ] Always check search results before using
 - [ ] Always dispose calculation results
 - [ ] Use try-finally for resource cleanup

@@ -38,9 +38,9 @@ You'll need a database in openLCA:
 
 ## Installation Methods
 
-### Method 1: Install from PyPI (Coming Soon)
+### Method 1: Install from PyPI (Recommended)
 
-Once published to PyPI, you'll be able to install with:
+The current package is published on PyPI. Install the released version with:
 
 ```bash
 pip install openlca-ipc
@@ -52,11 +52,11 @@ pip install openlca-ipc
 
 ```bash
 # Using HTTPS
-git clone https://github.com/dernestbank/openlca-ipc.git
+git clone https://github.com/SDAI-institute/openlca-ipc.git
 cd openlca-ipc
 
 # Or using SSH
-git clone git@github.com:dernestbank/openlca-ipc.git
+git clone git@github.com:SDAI-institute/openlca-ipc.git
 cd openlca-ipc
 ```
 
@@ -73,8 +73,8 @@ pip install -e ".[full]"
 #### What Gets Installed
 
 **Core Dependencies:**
-- `olca-ipc>=2.4.0` - openLCA IPC protocol implementation
-- `olca-schema>=2.4.0` - openLCA data schema
+- `olca-ipc>=2.6.0` - openLCA IPC protocol implementation
+- `olca-schema>=2.6.0` - openLCA data schema
 - `numpy>=1.24.0` - Numerical operations
 
 **Optional Dependencies** (with `[full]`):
@@ -434,6 +434,6 @@ After successful installation:
 
 If you encounter issues not covered here:
 
-- **GitHub Issues**: [Report a bug](https://github.com/dernestbank/openlca-ipc/issues)
-- **Discussions**: [Ask a question](https://github.com/dernestbank/openlca-ipc/discussions)
+- **GitHub Issues**: [Report a bug](https://github.com/SDAI-institute/openlca-ipc/issues)
+- **Repository**: [SDAI-institute/openlca-ipc](https://github.com/SDAI-institute/openlca-ipc)
 - **Email**: dernestbanksch@gmail.com

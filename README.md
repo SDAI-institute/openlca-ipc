@@ -30,7 +30,7 @@ You can cite all versions by using the DOI 10.5281/zenodo.17567634. This DOI rep
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.11 or higher
 - openLCA desktop application (version 2.x)
 - openLCA IPC server running (Tools → Developer Tools → IPC Server)
 
@@ -340,8 +340,8 @@ client = OLCAClient(port=8080)
 
 ### Core Dependencies
 
-- `olca-ipc>=2.4.0` - openLCA IPC protocol implementation
-- `olca-schema>=2.4.0` - openLCA data schema
+- `olca-ipc>=2.6.0` - openLCA IPC protocol implementation
+- `olca-schema>=2.6.0` - openLCA data schema
 - `numpy>=1.24.0` - Numerical operations
 
 ### Optional Dependencies
@@ -500,7 +500,7 @@ If you use this library in your research, please cite:
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/SDAI-institute/openlca-ipc/issues)
-- **Documentation**: [Read the Docs](documentation/DOCUMENTATION_MAP.md)
+- **Documentation**: [Documentation map](documentation/DOCUMENTATION_MAP.md)
 - **Email**: dernestbanksch@gmail.com
 
 ---
