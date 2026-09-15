@@ -160,6 +160,39 @@ class SearchUtils:
                     break
         
         return matches
+
+    def find_product_systems(
+        self,
+        keywords: Optional[List[str]] = None,
+        max_results: int = 25,
+    ) -> List[o.Ref]:
+        """Search existing product systems by case-insensitive keywords.
+
+        Product systems are calculation-ready database entities and therefore
+        need a read-only discovery path separate from ``create_product_system``.
+        All supplied keywords must occur in the descriptor name. Passing no
+        keywords returns the first ``max_results`` descriptors, which is useful
+        for browsing a database when the caller does not yet know a system name.
+
+        Args:
+            keywords: Optional name fragments; all fragments must match.
+            max_results: Maximum number of descriptors to return.
+
+        Returns:
+            Existing product-system references only; this method never creates
+            or mutates database entities.
+        """
+        if max_results <= 0:
+            return []
+        keywords_lower = [k.strip().lower() for k in (keywords or []) if k.strip()]
+        matches: List[o.Ref] = []
+        for system_ref in self.client.get_descriptors(o.ProductSystem):
+            name_lower = (system_ref.name or "").lower()
+            if all(keyword in name_lower for keyword in keywords_lower):
+                matches.append(system_ref)
+                if len(matches) >= max_results:
+                    break
+        return matches
     
     def find_impact_methods(
         self, keywords: List[str], max_results: int = 10
@@ -179,11 +212,12 @@ class SearchUtils:
             A list of method references (possibly empty), best match first.
         """
         tokens = [tok for kw in keywords for tok in _normalize(kw).split()]
+        descriptors = list(self.client.get_descriptors(o.ImpactMethod))
         if not tokens:
-            return []
+            return descriptors[:max_results]
 
         scored: List[Tuple[int, int, o.Ref]] = []
-        for ref in self.client.get_descriptors(o.ImpactMethod):
+        for ref in descriptors:
             norm = _normalize(ref.name)
             hits = sum(1 for t in tokens if t in norm)
             if hits:
@@ -207,17 +241,24 @@ class SearchUtils:
             Impact method object, or None
         """
         tokens = [tok for kw in keywords for tok in _normalize(kw).split()]
+        if not tokens:
+            return None
         candidates = self.find_impact_methods(keywords, max_results=25)
         if not candidates:
             return None
 
-        # Prefer a full-token match if one exists.
+        # Single-method resolution is intentionally strict: every normalized
+        # query token must occur in the chosen method name.  Ranked partial
+        # matches remain available through ``find_impact_methods`` for browsing,
+        # but silently substituting a partial match in a calculation can produce
+        # scientifically valid-looking results for the wrong LCIA method.
         full = [
             ref for ref in candidates
             if all(t in _normalize(ref.name) for t in tokens)
         ]
-        chosen = (full or candidates)[0]
-        return self.client.get(o.ImpactMethod, chosen.id)
+        if not full:
+            return None
+        return self.client.get(o.ImpactMethod, full[0].id)
 
     def get_by_name(self, model_type, name: str) -> Optional[o.Ref]:
         """

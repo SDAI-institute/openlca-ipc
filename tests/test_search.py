@@ -86,6 +86,28 @@ class TestSearchUtils:
         assert len(results) == 2
         assert results[0].name == "Steel production"
 
+    def test_find_product_systems_browse_and_filter(self, mock_ipc_client):
+        """Product-system discovery is read-only and supports browse + keyword modes."""
+        systems = [
+            o.Ref(id="s1", name="PET bottle production"),
+            o.Ref(id="s2", name="Glass bottle production"),
+            o.Ref(id="s3", name="PET granulate"),
+        ]
+        mock_ipc_client.get_descriptors.return_value = systems
+        search = SearchUtils(mock_ipc_client)
+
+        browsed = search.find_product_systems(max_results=2)
+        assert [ref.id for ref in browsed] == ["s1", "s2"]
+
+        filtered = search.find_product_systems(["pet", "bottle"], max_results=10)
+        assert [ref.id for ref in filtered] == ["s1"]
+        mock_ipc_client.get_descriptors.assert_called_with(o.ProductSystem)
+
+    def test_find_product_systems_zero_limit(self, mock_ipc_client):
+        search = SearchUtils(mock_ipc_client)
+        assert search.find_product_systems(max_results=0) == []
+        mock_ipc_client.get_descriptors.assert_not_called()
+
     def test_find_impact_method(self, mock_ipc_client):
         """Test find_impact_method resolves a full method by keyword."""
         method_ref = o.Ref(id="m1", name="TRACI 2.1")
@@ -110,6 +132,16 @@ class TestSearchUtils:
 
         search = SearchUtils(mock_ipc_client)
         assert search.find_impact_method(['TRACI']) is None
+
+    def test_find_impact_method_rejects_partial_only_match(self, mock_ipc_client):
+        """Single-method resolution must not fall back to an arbitrary partial hit."""
+        mock_ipc_client.get_descriptors.return_value = [
+            o.Ref(id="ef31", name="EF 3.1 Method (adapted)"),
+            o.Ref(id="traci", name="TRACI 2.1"),
+        ]
+        search = SearchUtils(mock_ipc_client)
+        assert search.find_impact_method(["impossible method token 7e4c"]) is None
+        mock_ipc_client.get.assert_not_called()
 
     def test_find_impact_method_version_normalization(self, mock_ipc_client):
         """v0.4.1: 'EF v3.1' resolves to 'EF 3.1 Method (adapted)'."""
@@ -138,6 +170,17 @@ class TestSearchUtils:
         hits = search.find_impact_methods(['EF v3.1'])
         assert hits[0].id == "ef31"  # full 'ef'+'3.1' match ranks first
         assert all(h.id != "traci" for h in hits)
+
+    def test_find_impact_methods_empty_keywords_browses(self, mock_ipc_client):
+        mock_ipc_client.get_descriptors.return_value = [
+            o.Ref(id="m1", name="CML"),
+            o.Ref(id="m2", name="ILCD"),
+            o.Ref(id="m3", name="TRACI"),
+        ]
+        search = SearchUtils(mock_ipc_client)
+        hits = search.find_impact_methods([], max_results=2)
+        assert [ref.id for ref in hits] == ["m1", "m2"]
+        assert search.find_impact_method([]) is None
 
     def test_find_providers(self, mock_ipc_client, sample_flow):
         """find_providers extracts provider refs from TechFlow objects."""
