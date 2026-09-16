@@ -300,7 +300,7 @@ class DataBuilder:
 
         ex.amount = amount
         if formula:
-            ex.formula = formula
+            ex.amount_formula = formula
         ex.unit = unit
         ex.flow_property = flow_property
         ex.is_input = is_input
@@ -367,3 +367,4 @@ class DataBuilder:
         self.client.put(process)
         logger.info(f"Created process: {name}")
         return process
+

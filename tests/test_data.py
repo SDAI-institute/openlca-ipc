@@ -170,7 +170,8 @@ class TestDataBuilder:
         builder = DataBuilder(mock_ipc_client)
         ex = builder.create_exchange(flow=sample_flow, amount=32.5,
                                      is_input=True, formula="0.065*500")
-        assert ex.formula == "0.065*500"
+        assert ex.amount_formula == "0.065*500"
+        assert ex.to_dict()["amountFormula"] == "0.065*500"
 
     def test_create_exchange_explicit_unit_override(self, mock_ipc_client, sample_flow):
         """Explicit unit/flow_property override the derived reference values."""
@@ -395,3 +396,4 @@ class TestDataBuilder:
 
         assert isinstance(process, o.Process)
         assert any("qref" in rec.message.lower() for rec in caplog.records)
+

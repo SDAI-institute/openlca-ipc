@@ -124,7 +124,8 @@ class TestUnitFuzzingLive:
         stored = next(e for e in process.exchanges if e.flow.id == transport_flow.id)
         assert stored.amount == pytest.approx(0.0325)
         assert stored.unit.name.lower() != "kg"
-        assert stored.formula == "0.065*500/1000"
+        assert stored.amount_formula == "0.065*500/1000"
 
         live_client.client.delete(o.Ref(id=process.id, ref_type=o.RefType.Process))
         live_client.client.delete(o.Ref(id=out_flow.id, ref_type=o.RefType.Flow))
+
